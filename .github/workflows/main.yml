@@ -1,0 +1,61 @@
+name: Build and Push Golang Image to AWS ECR
+on:
+  push:
+    branches: [ main ]
+    
+jobs:
+  build-and-push:                 # deploy
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+
+    steps:
+    # checkout the code to the runner
+    - name: Checkout repo into Go module directory
+      uses: actions/checkout@v2
+
+    # Install kubectl binary on the runner
+    # - name: Install Kubectl
+    #   uses: azure/setup-kubectl@v3
+    #   with:
+    #     version: 'latest'
+    #   id: install
+
+    # set login credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+
+    # login to ECR
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # load env variables from SecretsManager, format the result and populate the app.env file before building the image
+    # - name: Load secrets and save to app.env
+    #   run: aws secretsmanager get-secret-value --region eu-central-1 --secret-id rent-my-room --query SecretString --output text | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > app.env
+
+    # build docker image and push to ecr
+    - name: Build, Tag, and Push the Image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: lesson-86
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    # point kube config to aws cluster
+    # - name: Update Kube config
+    #   run: aws eks update-kubeconfig --name rent-my-room --region eu-central-1
+
+    # deploy image from ECR to EKS
+    # - name: Deploy image to EKS
+    #   run: |
+    #     kubectl apply -f eks/aws-auth.yaml 
+    #     kubectl apply -f eks/deployment.yaml
+    #     kubectl apply -f eks/service.yaml
+    #     kubectl apply -f eks/issuer.yaml
+    #     kubectl apply -f eks/ingress.yaml
