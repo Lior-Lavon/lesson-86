@@ -11,7 +11,7 @@ FROM alpine:3.13
 WORKDIR /app
 COPY --from=builder /app/lesson86 .
 # copy config file
-COPY --from=builder /app/app.env .
+#COPY --from=builder /app/app.env .
 
 EXPOSE 8080
 
